@@ -1,0 +1,19 @@
+[package]
+name = "treevolution"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "treevolution"
+
+[[bin]]
+name = "treevolution_viewer"
+path = "src/main.rs"
+
+[dependencies]
+macroquad = { version = "0.4.13"}
+rand = "0.9.0-beta.1"
+ndarray = "0.16.1"
+
+
+
