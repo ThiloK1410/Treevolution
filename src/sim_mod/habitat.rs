@@ -7,6 +7,7 @@ use crate::sim_mod::cell_types::CellType;
 use crate::sim_mod::cell_types::CellType::{Empty, Leaf, Trunk};
 use crate::sim_mod::plant::Plant;
 use crate::constants::simulation::{LEAF_ABSORB_RATE, TRUNK_ABSORB_RATE};
+use crate::traits::color_convert::ColorConvert;
 
 // control struct, to hold the data of every tree and information of whole grid
 pub struct Habitat {
@@ -80,6 +81,14 @@ impl Habitat {
     }
     pub fn get_cell_map(&self) -> &Array<Rc<CellType>, Ix2> {
         &self.cell_map
+    }
+
+    pub fn get_rgb_data(&self) -> Vec<u8> {
+        self.cell_map.iter()
+            .map(|x| x.get_color() )
+            .flat_map(|x| [x.r, x.g, x.b])
+            .map(|x| (x * 255.0) as u8)
+            .collect()
     }
 
     pub fn is_in_grid(&self, pos: (i32, i32)) -> bool {
