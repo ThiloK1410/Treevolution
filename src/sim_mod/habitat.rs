@@ -35,42 +35,19 @@ impl Habitat {
         }
     }
 
-    fn apply_plants(&mut self) {
-        // reinitialize whole grid as empty
-        self.cell_map = vec![vec![Empty; self.grid_size.y as usize]; self.grid_size.x as usize];
-
-        let mut leaves = Vec::<(IVec2, CellType)>::new();
-        let mut trunks = Vec::<(IVec2, CellType)>::new();
-
-        for plant in &self.plants {
-            for (pos, cell) in plant.get_cells().iter() {
-                match cell {
-                    Leaf { .. } => {leaves.push((*pos, *cell));},
-                    Trunk { .. } => {trunks.push((*pos, *cell));},
-                    _ => {}
-                }
-            }
-        }
-        for (pos, cell) in trunks.iter() {
-            self.set_cell(*pos, *cell)
-        }
-        for (pos, cell) in leaves.iter() {
-            self.set_cell(*pos, *cell)
-        }
-
-        for ix in 0..self.dead_cells.len() {
-            self.set_cell(self.dead_cells[ix], Dead);
-        }
+    // get the data of the grid as a linear rgb byte vector, every 3 bytes represent one pixel (rgb)
+    // the data is ordered column by column
+    pub fn get_rgb_data(&self) -> Vec<u8> {
+        self.cell_map
+            .iter()
+            .flatten()
+            .map(|x| x.get_color())
+            .flat_map(|x| [x.r, x.g, x.b])
+            .map(|x| (x * 255.0) as u8)
+            .collect::<Vec<u8>>()
     }
 
-    pub fn spawn_plant(&mut self) {
-        let mut rng = rand::rng();
-        let pos = (rng.random_range(0..self.grid_size.x), self.grid_size.y-1);
-        if let Empty = self.get_cell_at(pos.into()) {
-            self.seeds.push(Plant::new(pos.into()));
-        }
-    }
-
+    // main update loop, meant to be called in a loop
     pub fn update(&mut self) {
 
         // increase the age of all plants
@@ -135,43 +112,79 @@ impl Habitat {
 
         // adding all seeds to grid, happens after calculation because seeds cant impact anything
         self.show_seeds();
-
     }
 
-    pub fn set_cell(&mut self, pos: IVec2, cell_type: CellType) {
-        self.cell_map[((pos.x + self.grid_size.x) % self.grid_size.x) as usize]
-            [(self.grid_size.y - 1 - pos.y) as usize] = cell_type;
+    // spawns a random seed in the grid
+    pub fn spawn_plant(&mut self) {
+        let mut rng = rand::rng();
+        let pos = (rng.random_range(0..self.grid_size.x), self.grid_size.y-1);
+        if let Empty = self.get_cell_at(pos.into()) {
+            self.seeds.push(Plant::new(pos.into()));
+        }
     }
 
-    pub fn get_rgb_data(&self) -> Vec<u8> {
-        self.cell_map
-            .iter()
-            .flatten()
-            .map(|x| x.get_color())
-            .flat_map(|x| [x.r, x.g, x.b])
-            .map(|x| (x * 255.0) as u8)
-            .collect::<Vec<u8>>()
-    }
-
-    pub fn is_in_grid(&self, pos: IVec2) -> bool {
-        !(pos.x < 0 || pos.x >= self.grid_size.x || pos.y < 0 || pos.y >= self.grid_size.y)
-    }
-    pub fn is_in_y_bounds(&self, pos: IVec2) -> bool {
-        !(pos.y < 0 || pos.y >= self.grid_size.y)
-    }
-
-    pub fn get_cell_at(&self, pos: IVec2) -> &CellType {
-        &self.cell_map
-            [((pos.x + self.grid_size.x) % self.grid_size.x) as usize]
-            [(self.grid_size.y - 1 - pos.y) as usize]
-    }
-
+    // returns the total amount of plants currently existing in the habitat,
+    // including seeds, in the air or ground, and living plants
     pub fn get_total_plant_count(&self) -> usize {
         self.plants.len() + self.seeds.len()
             + self.ground_buffer.iter().map(|x| x.len()).sum::<usize>()
     }
 
-    pub fn spawn_random_cell(&mut self) {
+    fn apply_plants(&mut self) {
+        // reinitialize whole grid as empty
+        self.cell_map = vec![vec![Empty; self.grid_size.y as usize]; self.grid_size.x as usize];
+
+        let mut leaves = Vec::<(IVec2, CellType)>::new();
+        let mut trunks = Vec::<(IVec2, CellType)>::new();
+
+        for plant in &self.plants {
+            for (pos, cell) in plant.get_cells().iter() {
+                match cell {
+                    Leaf { .. } => {leaves.push((*pos, *cell));},
+                    Trunk { .. } => {trunks.push((*pos, *cell));},
+                    _ => {}
+                }
+            }
+        }
+        for (pos, cell) in trunks.iter() {
+            self.set_cell(*pos, *cell)
+        }
+        for (pos, cell) in leaves.iter() {
+            self.set_cell(*pos, *cell)
+        }
+
+        for ix in 0..self.dead_cells.len() {
+            self.set_cell(self.dead_cells[ix], Dead);
+        }
+    }
+
+
+
+
+
+    fn set_cell(&mut self, pos: IVec2, cell_type: CellType) {
+        self.cell_map[((pos.x + self.grid_size.x) % self.grid_size.x) as usize]
+            [(self.grid_size.y - 1 - pos.y) as usize] = cell_type;
+    }
+
+
+
+    fn is_in_grid(&self, pos: IVec2) -> bool {
+        !(pos.x < 0 || pos.x >= self.grid_size.x || pos.y < 0 || pos.y >= self.grid_size.y)
+    }
+    fn is_in_y_bounds(&self, pos: IVec2) -> bool {
+        !(pos.y < 0 || pos.y >= self.grid_size.y)
+    }
+
+    fn get_cell_at(&self, pos: IVec2) -> &CellType {
+        &self.cell_map
+            [((pos.x + self.grid_size.x) % self.grid_size.x) as usize]
+            [(self.grid_size.y - 1 - pos.y) as usize]
+    }
+
+
+
+    fn spawn_random_cell(&mut self) {
         let mut rng = rand::rng();
         // try to place a cell at random position, 100 tries at max
         for _ in 0..100 {
