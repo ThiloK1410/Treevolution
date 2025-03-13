@@ -53,8 +53,6 @@ async fn main() {
             if is_key_down(Down) { grid.zoom(-0.02f32) }
             if is_key_down(Left) { grid.change_offset(20f32) }
             if is_key_down(Right) { grid.change_offset(-20f32) }
-
-            if is_key_down(Space) { habitat.spawn_random_cell() }
             if is_key_pressed(Enter) { habitat.spawn_plant() }
 
             if counter % 1 == 0 {
