@@ -2,13 +2,16 @@ use macroquad::color::{BLACK, Color, WHITE};
 use macroquad::math::{IVec2, Vec2};
 use macroquad::shapes::{draw_line, draw_rectangle};
 use ndarray::{Array, Ix2};
-use crate::traits::color_convert::ColorConvert;
+use rayon::iter::{IndexedParallelIterator};
+use crate::constants::simulation::GRID_SIZE;
 
 pub struct GridWindow {
     dim: Vec2,
     pos: Vec2,
+    grid_pos: Vec2,
     grid_size: IVec2,
     grid_content: Array<Color, Ix2>,
+    border_columns: (f32, f32),
     zoom: f32,
     x_offset: f32,
     default_cell_size: f32,
@@ -21,6 +24,8 @@ impl GridWindow {
         let mut x = Self {
             dim,
             pos,
+            grid_pos: pos,
+            border_columns: Default::default(),
             grid_size,
             grid_content: Array::<Color, Ix2>::from_elem(
                 (grid_size[0] as usize, grid_size[1] as usize), WHITE),
@@ -81,21 +86,23 @@ impl GridWindow {
             self.x_offset -= self.cell_size * self.grid_size.x as f32;
         }
     }
-    pub fn draw_cells(&self) {
+    pub fn  draw_cells(&mut self) {
 
         // position where the actual grid starts (regarding zoom and grid_pos)
-        let grid_pos = Vec2::new(
+        self.grid_pos = Vec2::new(
             self.pos.x,
             self.pos.y + (self.dim.y - self.cell_size*self.grid_size.y as f32));
 
 
         // width of the 2 chopped off columns
-        let cell_width1 = self.x_offset % self.cell_size;
-        let cell_width2 = (self.dim.x-self.x_offset) % self.cell_size;
+        self.border_columns = (
+            self.x_offset % self.cell_size,
+            (self.dim.x-self.x_offset) % self.cell_size
+        );
 
         // amount of fully visible square columns plus the 2 chopped off
         let x_square_count = ((self.dim.x / self.cell_size).ceil()
-            - ((cell_width1+cell_width2)/self.cell_size)) as usize + 2;
+            - ((self.border_columns.0+self.border_columns.1)/self.cell_size)) as usize + 2;
 
         //starting point for x index of cells
         let start_idx = (self.grid_size.x as f32 - (self.x_offset/self.cell_size).ceil()) as usize;
@@ -106,9 +113,9 @@ impl GridWindow {
                 //first chopped of columns
                 if cell_nbr == 0 && self.x_offset != 0f32 {
                     draw_rectangle(
-                        grid_pos.x,
-                        grid_pos.y + y as f32*self.cell_size,
-                        cell_width1,
+                        self.grid_pos.x,
+                        self.grid_pos.y + y as f32*self.cell_size,
+                        self.border_columns.0,
                         self.cell_size,
                         self.grid_content[[start_idx, y]]);
                     continue
@@ -117,16 +124,16 @@ impl GridWindow {
                 //second chopped off column
                 if cell_nbr == x_square_count-1 && self.x_offset != 0f32 {
                     draw_rectangle(
-                        grid_pos.x+cell_width1 + (cell_nbr-1) as f32*self.cell_size,
-                        grid_pos.y + y as f32*self.cell_size,
-                        cell_width2,
+                        self.grid_pos.x+self.border_columns.0 + (cell_nbr-1) as f32*self.cell_size,
+                        self.grid_pos.y + y as f32*self.cell_size,
+                        self.border_columns.1,
                         self.cell_size,
                         self.grid_content[[x, y]]);
                     continue
                 }
                 draw_rectangle(
-                    grid_pos.x+cell_width1 + (cell_nbr-1) as f32*self.cell_size,
-                    grid_pos.y + y as f32*self.cell_size,
+                    self.grid_pos.x+self.border_columns.0 + (cell_nbr-1) as f32*self.cell_size,
+                    self.grid_pos.y + y as f32*self.cell_size,
                     self.cell_size,
                     self.cell_size,
                     self.grid_content[[x, y]]);
@@ -134,16 +141,19 @@ impl GridWindow {
         }
     }
 
-    pub fn draw_all(&self) {
+    pub fn draw_all(&mut self) {
         draw_rectangle(self.pos.x, self.pos.y, self.dim.x, self.dim.y, WHITE);
         self.draw_cells();
         self.draw_grid()
     }
 
-    pub fn update_cells(&mut self, array: Array<impl ColorConvert, Ix2>) {
-        assert_eq!(array.shape(), self.grid_content.shape());
+    pub fn update_cells(&mut self, array: &[u8]) {
+        assert_eq!(array.len(), (GRID_SIZE.x * GRID_SIZE.y * 3) as usize);
 
-        self.grid_content = array.map(ColorConvert::get_color);
+        let data = self.grid_content.as_slice_mut().unwrap();
+        array.chunks(3).zip(data).for_each(|(i, color)| {
+                *color = Color::from_rgba(i[0], i[1], i[2], 255);
+        });
     }
 }
 
