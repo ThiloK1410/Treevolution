@@ -36,6 +36,7 @@ async fn main() {
         GRID_SIZE);
 
     let mut habitat = Habitat::new(GRID_SIZE);
+    habitat.set_minimum_plants(20);
 
     let mut lag = 0.;
     let mut counter = 0;
@@ -58,9 +59,6 @@ async fn main() {
             if counter % 1 == 0 {
                 habitat.update();
                 counter = 0;
-                if habitat.get_total_plant_count() < 30 {
-                    habitat.spawn_plant()
-                }
             }
 
 

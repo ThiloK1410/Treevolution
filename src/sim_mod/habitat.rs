@@ -16,6 +16,7 @@ pub struct Habitat {
     seeds: Vec<Plant>,
     dead_cells: Vec<IVec2>,
     ground_buffer: Vec<Vec<Plant>>,
+    minimum_plants: usize,
 }
 
 impl Habitat {
@@ -32,6 +33,7 @@ impl Habitat {
                 out.resize_with(grid_size.x as usize, || Vec::new());
                 out
             },
+            minimum_plants: 0,
         }
     }
 
@@ -49,6 +51,10 @@ impl Habitat {
 
     // main update loop, meant to be called in a loop
     pub fn update(&mut self) {
+
+        if self.get_total_plant_count() < self.minimum_plants {
+            self.spawn_plant()
+        }
 
         // increase the age of all plants
         self.plants.par_iter_mut().for_each(|plant| plant.increase_age());
@@ -121,6 +127,10 @@ impl Habitat {
         if let Empty = self.get_cell_at(pos.into()) {
             self.seeds.push(Plant::new(pos.into()));
         }
+    }
+
+    pub fn set_minimum_plants(&mut self, minimum_plants: usize) {
+        self.minimum_plants = minimum_plants;
     }
 
     // returns the total amount of plants currently existing in the habitat,
