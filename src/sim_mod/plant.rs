@@ -70,6 +70,15 @@ impl Plant {
         out
     }
 
+    pub fn get_cell_ix_at(&self, pos: IVec2) -> Option<usize> {
+        for (ix, cell) in self.cells.iter().enumerate() {
+            if cell.get_pos() == pos {
+                return Some(ix)
+            }
+        }
+        None
+    }
+
     fn has_energy(&self) -> bool {
         self.energy > 0f32
     }

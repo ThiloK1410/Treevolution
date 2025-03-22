@@ -13,9 +13,10 @@ name = "treevolution_viewer"
 path = "src/main.rs"
 
 [dependencies]
-macroquad = { version = "0.4.13"}
+macroquad = "0.4.13"
 rand = "0.9.0-beta.1"
 ndarray = { version = "0.16.1", features = ["rayon"] }
 rayon = "1.10.0"
+dialog = "0.3.0"
 
 

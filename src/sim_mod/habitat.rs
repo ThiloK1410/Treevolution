@@ -1,3 +1,4 @@
+use std::collections::HashMap;
 use crate::constants::simulation::{CELL_SUSTAIN_ENERGY_COST, DEAD_CELL_REMOVE_RATE, LEAF_ABSORB_RATE, MAX_GROWTHS_PER_ITERATION, SEED_ENERGY_DRAIN, SEED_SPAWN_RATE, SUN_POWER, TRUNK_ABSORB_RATE};
 use crate::sim_mod::cell_types::CellType;
 use crate::sim_mod::cell_types::CellType::{Empty, Leaf, Trunk, Dead};
@@ -17,6 +18,9 @@ pub struct Habitat {
     dead_cells: Vec<IVec2>,
     ground_buffer: Vec<Vec<Plant>>,
     minimum_plants: usize,
+    selected_pos: Option<IVec2>,
+    selected_plant_ix: Option<usize>,
+    selected_cell_ix: Option<usize>,
 }
 
 impl Habitat {
@@ -34,6 +38,9 @@ impl Habitat {
                 out
             },
             minimum_plants: 0,
+            selected_pos: None,
+            selected_plant_ix: None,
+            selected_cell_ix: None,
         }
     }
 
@@ -52,6 +59,7 @@ impl Habitat {
     // main update loop, meant to be called in a loop
     pub fn update(&mut self) {
 
+        // check if below minimum plants, if so spawn single plant
         if self.get_total_plant_count() < self.minimum_plants {
             self.spawn_plant()
         }
@@ -61,21 +69,16 @@ impl Habitat {
 
         // let each plant grow by the selected growths
         let plant_growth = self.create_growths();
-
         for (idx, growths) in plant_growth.into_iter().enumerate() {
-
             let mut plant = &mut self.plants[idx];
-
             for (pos,response_ix, cell_type, energy_cost) in growths {
                 plant.add_cell(pos, cell_type, response_ix);
                 plant.give_energy(-energy_cost);
             }
         }
 
-
-        let mut dead_plant_ix = Vec::<usize>::new();
-
         // collect all indices of dead plants
+        let mut dead_plant_ix = Vec::<usize>::new();
         for (ix, plant) in self.plants.iter().enumerate() {
             if plant.is_dead() {
                 dead_plant_ix.push(ix);
@@ -88,12 +91,14 @@ impl Habitat {
                 }
             }
         }
+
         // collect all cell positions of dead plants
         for ix in dead_plant_ix {
             for (pos, _) in self.plants[ix].get_cells().iter() {
                 self.dead_cells.push(*pos);
             }
         }
+
         // destroy all plants with no energy or which are too old
         self.plants.retain(|plant| !plant.is_dead());
 
@@ -106,7 +111,28 @@ impl Habitat {
         // look up the collected energy for each plant and add it while removing consumed energy
         self.supply_plant_energy();
 
+        // let dead cells "deteriorate"
         self.dead_cells.retain(|_| !random_bool(DEAD_CELL_REMOVE_RATE as f64));
+
+        // update the selected plant and cell indices
+        if let Some(selected_pos) = self.selected_pos {
+            match self.get_cell_at(selected_pos) {
+                Leaf {..} | Trunk {..} => {
+                    for (plant_ix, plant) in self.plants.iter().enumerate() {
+                        if let Some(cell_ix) = plant.get_cell_ix_at(selected_pos) {
+                            self.selected_plant_ix = Some(plant_ix);
+                            self.selected_cell_ix = Some(cell_ix);
+                        }
+                    }
+                }
+                _ => {
+                    // if there is no selectable cell at the selected position, set all selections to null
+                    self.selected_plant_ix = None;
+                    self.selected_cell_ix = None;
+                    self.selected_pos = None
+                }
+            }
+        }
 
         // --- right here calculations are done,
         // and it is allowed to change the grid for appearance(show seeds)
@@ -140,10 +166,29 @@ impl Habitat {
             + self.ground_buffer.iter().map(|x| x.len()).sum::<usize>()
     }
 
+    pub fn get_focus_information(&self) -> Option<HashMap<String, String>> {
+        if let None = self.selected_pos {
+            return None;
+        }
+        let mut information: HashMap<String, String> = HashMap::new();
+        if let Some(selected_plant_ix) = self.selected_plant_ix {
+            let plant = &self.plants[selected_plant_ix];
+            information.insert("energy".into(), plant.get_energy().to_string());
+            information.insert("cell_count".into(), plant.get_cells().len().to_string());
+        }
+        Some(information)
+    }
+
+    // selecting a pos outside of grid may panic
+    pub fn select_pos(&mut self, pos: IVec2) {
+        self.selected_pos = Some(pos);
+    }
+
     fn apply_plants(&mut self) {
         // reinitialize whole grid as empty
         self.cell_map = vec![vec![Empty; self.grid_size.y as usize]; self.grid_size.x as usize];
 
+        // collecting leaves and trunks separately because leaves have priority
         let mut leaves = Vec::<(IVec2, CellType)>::new();
         let mut trunks = Vec::<(IVec2, CellType)>::new();
 
@@ -167,9 +212,6 @@ impl Habitat {
             self.set_cell(self.dead_cells[ix], Dead);
         }
     }
-
-
-
 
 
     fn set_cell(&mut self, pos: IVec2, cell_type: CellType) {
