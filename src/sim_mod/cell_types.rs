@@ -50,7 +50,7 @@ impl CellType {
 impl ColorConvert for CellType {
     fn get_color(&self) -> Color {
         match self {
-            Empty => {WHITE}
+            Empty => {SKYBLUE}
             Leaf { mut sun_absorbed } => {
                 sun_absorbed /= LEAF_ABSORB_RATE;
                 Color::new(
