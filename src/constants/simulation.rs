@@ -1,6 +1,6 @@
 use macroquad::math::IVec2;
 
-pub const GRID_SIZE: IVec2 = IVec2::new(32, 8);
+pub const GRID_SIZE: IVec2 = IVec2::new(1024, 32);
 pub const ROOT_CON_DECAY: f32 = 0.8;        // how fast the connection to the root decays over distance
 
 pub const TRUNK_ABSORB_RATE: f32 = 0.1;     // how much sun gets blocked by trunks
@@ -24,11 +24,11 @@ pub const CELL_SUSTAIN_ENERGY_COST: f32 = 0.5;
 
 pub const DEFAULT_ENERGY: f32 = 125.;       // the default energy each plant starts with
 
-pub const SUN_POWER: f32 = 3.;
+pub const SUN_POWER: f32 = 4.;
 
 pub const SEED_ENERGY_DRAIN: f32 = 0.1;      // the amount of energy each seed looses while staying dormant in the ground
 
-pub const DEAD_CELL_REMOVE_RATE: f32 = 0.05; // the chance that a dead cell disappears
+pub const DEAD_CELL_REMOVE_RATE: f32 = 0.02; // the chance that a dead cell disappears
 
 pub const SEED_SPAWN_RATE: f32 = 0.1;      // temporary: chance at which a dead cell becomes a seed
 
